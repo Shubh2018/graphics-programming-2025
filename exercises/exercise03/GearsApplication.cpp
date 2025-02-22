@@ -96,7 +96,7 @@ void GearsApplication::InitializeShaders()
     m_colorUniform = m_shaderProgram.GetUniformLocation("Color");
 
     // (todo) 03.1: Find the WorldMatrix uniform location
-
+    m_worldMatrix = m_shaderProgram.GetUniformLocation("WorldMatrix");
 
     // (todo) 03.5: Find the ViewProjMatrix uniform location
 
@@ -109,7 +109,7 @@ void GearsApplication::DrawGear(const Mesh& mesh, const glm::mat4& worldMatrix, 
     m_shaderProgram.SetUniform(m_colorUniform, static_cast<glm::vec3>(color));
 
     // (todo) 03.1: Set the value of the WorldMatrix uniform
-
+    m_shaderProgram.SetUniform(m_worldMatrix, glm::rotate(glm::radians(30.f), glm::vec3(0.f, 0.f, 1.f)));
 
     mesh.DrawSubmesh(0);
 }
