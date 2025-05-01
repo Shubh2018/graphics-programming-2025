@@ -8,6 +8,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <imgui.h>
 
+#include <iostream>
+
 CameraController::CameraController()
     : m_enabled(false), m_enablePressed(false)
     , m_mousePosition(0.0f)
@@ -72,6 +74,8 @@ void CameraController::UpdateTranslation(const Window& window, float deltaTime)
     translation += inputTranslation.x * right;
     translation += inputTranslation.y * forward;
 
+    std::cout << "(" << translation.x << ", " << translation.y << ", " << translation.z << ")" << std::endl;
+
     transform.SetTranslation(translation);
 }
 
@@ -89,6 +93,8 @@ void CameraController::UpdateRotation(const Window& window, float deltaTime)
     inputRotation *= m_rotationSpeed;
 
     rotation += inputRotation;
+    
+    std::cout << rotation.y << std::endl;
 
     transform.SetRotation(rotation);
 }
