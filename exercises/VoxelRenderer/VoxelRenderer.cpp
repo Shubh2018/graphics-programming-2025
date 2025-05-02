@@ -15,6 +15,7 @@
 #include <ituGL/shader/Material.h>
 #include <ituGL/geometry/Model.h>
 #include <ituGL/scene/SceneModel.h>
+#include <ituGL/geometry/VertexFormat.h>
 
 #include <ituGL/renderer/SkyboxRenderPass.h>
 #include <ituGL/renderer/ForwardRenderPass.h>
@@ -60,6 +61,8 @@ void VoxelRenderer::Render()
     Application::Render();
 
     GetDevice().Clear(true, Color(0.0f, 0.0f, 0.0f, 1.0f), true, 1.0f);
+
+    m_mesh.DrawSubmesh(0);
 
     // Render the scene
     m_renderer.Render();
@@ -164,6 +167,21 @@ void VoxelRenderer::InitializeMaterial()
 
 void VoxelRenderer::InitializeModels()
 {
+    std::vector<glm::vec3> vertices = {
+        glm::vec3( 0.5f,  0.5f, 0.0f),
+        glm::vec3( 0.5f, -0.5f, 0.0f),
+        glm::vec3(-0.5f, -0.5f, 0.0f),
+        glm::vec3(-0.5f,  0.5f, 0.0f) 
+    };
+
+    unsigned int indices[] = {  // note that we start from 0!
+        0, 1, 3,  // first Triangle
+        1, 2, 3   // second Triangle
+    };
+
+    VertexFormat vertexFormat;
+    vertexFormat.AddVertexAttribute<float>(3);
+
     m_skyboxTexture = TextureCubemapLoader::LoadTextureShared("models/skybox/defaultCubemap.png", TextureObject::FormatRGB, TextureObject::InternalFormatSRGB8);
 
     m_skyboxTexture->Bind();
@@ -177,31 +195,34 @@ void VoxelRenderer::InitializeModels()
     m_defaultMaterial->SetUniformValue("EnvironmentMaxLod", maxLod);
     m_defaultMaterial->SetUniformValue("Color", glm::vec3(1.0f));
 
-    // Configure loader
-    ModelLoader loader(m_defaultMaterial);
+    m_mesh.AddSubmesh<glm::vec3, unsigned int, VertexFormat::LayoutIterator>(Drawcall::Primitive::Triangles, vertices, indices,
+            vertexFormat.LayoutBegin(static_cast<int>(vertices.size()), false), vertexFormat.LayoutEnd());
 
-    // Create a new material copy for each submaterial
-    loader.SetCreateMaterials(true);
+    //// Configure loader
+    //ModelLoader loader(m_defaultMaterial);
 
-    // Flip vertically textures loaded by the model loader
-    loader.GetTexture2DLoader().SetFlipVertical(true);
+    //// Create a new material copy for each submaterial
+    //loader.SetCreateMaterials(true);
 
-    // Link vertex properties to attributes
-    loader.SetMaterialAttribute(VertexAttribute::Semantic::Position, "VertexPosition");
-    loader.SetMaterialAttribute(VertexAttribute::Semantic::Normal, "VertexNormal");
-    loader.SetMaterialAttribute(VertexAttribute::Semantic::Tangent, "VertexTangent");
-    loader.SetMaterialAttribute(VertexAttribute::Semantic::Bitangent, "VertexBitangent");
-    loader.SetMaterialAttribute(VertexAttribute::Semantic::TexCoord0, "VertexTexCoord");
+    //// Flip vertically textures loaded by the model loader
+    //loader.GetTexture2DLoader().SetFlipVertical(true);
 
-    // Link material properties to uniforms
-    loader.SetMaterialProperty(ModelLoader::MaterialProperty::DiffuseColor, "Color");
-    loader.SetMaterialProperty(ModelLoader::MaterialProperty::DiffuseTexture, "ColorTexture");
-    loader.SetMaterialProperty(ModelLoader::MaterialProperty::NormalTexture, "NormalTexture");
-    loader.SetMaterialProperty(ModelLoader::MaterialProperty::SpecularTexture, "SpecularTexture");
+    //// Link vertex properties to attributes
+    //loader.SetMaterialAttribute(VertexAttribute::Semantic::Position, "VertexPosition");
+    //loader.SetMaterialAttribute(VertexAttribute::Semantic::Normal, "VertexNormal");
+    //loader.SetMaterialAttribute(VertexAttribute::Semantic::Tangent, "VertexTangent");
+    //loader.SetMaterialAttribute(VertexAttribute::Semantic::Bitangent, "VertexBitangent");
+    //loader.SetMaterialAttribute(VertexAttribute::Semantic::TexCoord0, "VertexTexCoord");
+
+    //// Link material properties to uniforms
+    //loader.SetMaterialProperty(ModelLoader::MaterialProperty::DiffuseColor, "Color");
+    //loader.SetMaterialProperty(ModelLoader::MaterialProperty::DiffuseTexture, "ColorTexture");
+    //loader.SetMaterialProperty(ModelLoader::MaterialProperty::NormalTexture, "NormalTexture");
+    //loader.SetMaterialProperty(ModelLoader::MaterialProperty::SpecularTexture, "SpecularTexture");
 
     // Load models
-    std::shared_ptr<Model> chestModel = loader.LoadShared("models/treasure_chest/treasure_chest.obj");
-    m_scene.AddSceneNode(std::make_shared<SceneModel>("treasure chest", chestModel));
+    //std::shared_ptr<Model> chestModel = loader.LoadShared("models/treasure_chest/treasure_chest.obj");
+    //m_scene.AddSceneNode(std::make_shared<SceneModel>("treasure chest", chestModel));
 
     //std::shared_ptr<Model> cameraModel = loader.LoadShared("models/camera/camera.obj");
     //m_scene.AddSceneNode(std::make_shared<SceneModel>("camera model", cameraModel));
