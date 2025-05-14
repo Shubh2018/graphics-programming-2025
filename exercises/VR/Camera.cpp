@@ -1,5 +1,7 @@
 #include "Camera.h"
 
+#include <iostream>
+
 Camera::Camera()
 {
 }
@@ -23,21 +25,25 @@ void Camera::KeyControl(bool* keys, GLfloat deltaTime)
 	GLfloat velocity = movementSpeed * deltaTime;
 	if (keys[GLFW_KEY_W])
 	{
+		std::cout << "Pressed W" << std::endl;
 		position += front * velocity;
 	}
 
 	if (keys[GLFW_KEY_S])
 	{
+		std::cout << "Pressed S" << std::endl;
 		position -= front * velocity;
 	}
 
 	if (keys[GLFW_KEY_D])
 	{
+		std::cout << "Pressed D" << std::endl;
 		position += right * velocity;
 	}
 
 	if (keys[GLFW_KEY_A])
 	{
+		std::cout << "Pressed A" << std::endl;
 		position -= right * velocity;
 	}
 }

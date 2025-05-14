@@ -7,6 +7,31 @@
 
 VoxelRenderer::VoxelRenderer()
 {
+	m_voxelCountX = 50;
+	m_voxelCountZ = 50;
+	m_lightColor = glm::vec4(1.f, 1.f, 1.f, 1.f);
+	m_lightPosition = glm::vec3(5.f, 6.f, 8.f);
+
+	m_lacunarity = 1.9f;
+	m_gain = 0.5f;
+	m_octaves = 8;
+	m_modifier = 1.f;
+
+	Initialize();
+}
+
+VoxelRenderer::VoxelRenderer(int voxelCountX, int voxelCountZ, glm::vec4 lightColor, glm::vec3 lightPosition, float lacunarity, float gain, float octaves, float modifiers)
+{
+	m_voxelCountX = voxelCountX;
+	m_voxelCountZ = voxelCountZ;
+	m_lightColor = lightColor;
+	m_lightPosition = lightPosition;
+
+	m_lacunarity = lacunarity;
+	m_gain = gain;
+	m_octaves = octaves;
+	m_modifier = modifiers;
+
 	Initialize();
 }
 
@@ -100,13 +125,13 @@ void VoxelRenderer::Initialize()
 
 void VoxelRenderer::InitializeWindow()
 {
-	m_mainWindow = std::make_unique<GLWindow>(800, 600);
+	m_mainWindow = std::make_unique<GLWindow>(1024, 768);
 	m_mainWindow->Initialize();
 
 	//CreateMesh(m_vertices, indices);
 	CreateShader();
 
-	m_camera = std::make_unique<Camera>(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -90.0f, 5.0f, 0.5f);
+	m_camera = std::make_unique<Camera>(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 45.0f, 0.0f, 5.0f, 0.5f);
 
 	//std::cout << glGetString(GL_VERSION) << std::endl << glGetString(GL_VENDOR) << std::endl << glGetString(GL_RENDERER);
 
@@ -191,23 +216,23 @@ void VoxelRenderer::InitializeLighting()
 {
 	m_shader->UseShader();
 
-	glUniform3f(m_lightPositionUniform, 5.f, 6.f, 8.f); 
-	glUniform4f(m_lightColorUniform, 1.f, 1.f, 1.f, 1.f);
+	glUniform3f(m_lightPositionUniform, m_lightPosition.x, m_lightPosition.y, m_lightPosition.z); 
+	glUniform4f(m_lightColorUniform, m_lightColor.r, m_lightColor.g, m_lightColor.b, m_lightColor.a);
 	glUniform3f(m_viewPositionUniform, m_camera->GetPosition().x, m_camera->GetPosition().y, m_camera->GetPosition().z);
 	
 	glUseProgram(0);
 }
 
-std::vector<float> VoxelRenderer::CreateHeightMap(unsigned int width, unsigned int height, glm::ivec2 coords)
+std::vector<float> VoxelRenderer::CreateHeightMap(unsigned int countX, unsigned int countZ, glm::ivec2 coords)
 {
-	std::vector<float> pixels(height * width);
-	for (unsigned int j = 0; j < height; ++j)
+	std::vector<float> pixels(countZ * countX);
+	for (unsigned int j = 0; j < countZ; ++j)
 	{
-		for (unsigned int i = 0; i < width; ++i)
+		for (unsigned int i = 0; i < countX; ++i)
 		{
-			float x = static_cast<float>(i) / (width - 1) + coords.x;
-			float y = static_cast<float>(j) / (height - 1) + coords.y;
-			pixels[j * width + i] = stb_perlin_fbm_noise3(x, y, 0.0f, 1.9f, 0.5f, 8) * 1.f;
+			float x = static_cast<float>(i) / (countX - 1) + coords.x;
+			float y = static_cast<float>(j) / (countZ - 1) + coords.y;
+			pixels[j * countX + i] = stb_perlin_fbm_noise3(x, 0.f, y, m_lacunarity, m_gain, m_octaves) * m_modifier;
 		}
 	}
 

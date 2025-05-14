@@ -21,6 +21,7 @@ class VoxelRenderer
 {
 public:
 	VoxelRenderer();
+	VoxelRenderer(int voxelCountX, int voxelCountZ, glm::vec4 lightColor, glm::vec3 lightPosition, float lacunarity, float grain, float octaves, float modifiers);
 
 private:
 	std::unique_ptr<GLWindow> m_mainWindow;
@@ -50,7 +51,14 @@ private:
 
 	GLuint* m_indices = new GLuint[1];
 	GLfloat* m_vertices = new GLfloat[1];
-	GLfloat* m_normals = new GLfloat[1];
+
+	glm::vec3 m_lightPosition;
+	glm::vec4 m_lightColor;
+
+	float m_lacunarity;
+	float m_gain;
+	float m_octaves;
+	float m_modifier;
 
 private:
 	void Initialize();
@@ -60,7 +68,6 @@ private:
 	void InitializeWindow();
 
 	void RenderVoxels();
-	void RenderGUI();
 
 	void InitializeLighting();
 
