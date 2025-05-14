@@ -8,9 +8,9 @@ int main()
 	glm::vec4 lightColor = glm::vec4(1.f, 1.f, 1.f, 1.f);
 	glm::vec3 lightPosition = glm::vec3(25.f, 10.f, 25.f);
 
-	float lacunarity = 2;
+	float lacunarity = 1.5f;
 	float gain = .75f;
-	float octaves = 5;
+	float octaves = 8;
 	float modifier = 1.f;
 
 	VoxelRenderer renderer(

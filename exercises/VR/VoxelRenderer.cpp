@@ -164,12 +164,12 @@ void VoxelRenderer::GenerateVoxelList()
 		{
 			glm::vec4 color(0.0f);
 
-			if (j > 2)
+			if (j > 3)
 			{
 				color = glm::vec4(1.f, 1.f, 1.f, 1.f);
 			}
 
-			else if (j >= 1)
+			else if (j >= 2)
 			{
 				color = glm::vec4(.7f, .4f, 0.f, 1.f);
 			}
