@@ -23,6 +23,7 @@ int main()
 		octaves,
 		modifier
 	);
+
 	renderer.RunApplication();
 	return 0;
 }
