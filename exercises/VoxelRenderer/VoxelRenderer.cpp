@@ -1,255 +1,164 @@
 #include "VoxelRenderer.h"
 
-#include <ituGL/asset/TextureCubemapLoader.h>
-#include <ituGL/asset/ShaderLoader.h>
-#include <ituGL/asset/ModelLoader.h>
 
-#include <ituGL/camera/Camera.h>
-#include <ituGL/scene/SceneCamera.h>
+#define STB_PERLIN_IMPLEMENTATION
+#include "stb_perlin.h"
 
-#include <ituGL/lighting/DirectionalLight.h>
-#include <ituGL/lighting/PointLight.h>
-#include <ituGL/scene/SceneLight.h>
-
-#include <ituGL/shader/ShaderUniformCollection.h>
-#include <ituGL/shader/Material.h>
-#include <ituGL/geometry/Model.h>
-#include <ituGL/scene/SceneModel.h>
-#include <ituGL/geometry/VertexFormat.h>
-
-#include <ituGL/renderer/SkyboxRenderPass.h>
-#include <ituGL/renderer/ForwardRenderPass.h>
-#include <ituGL/scene/RendererSceneVisitor.h>
-
-#include <ituGL/scene/ImGuiSceneVisitor.h>
-#include <imgui.h>
-
-VoxelRenderer::VoxelRenderer()
-    : Application(1024, 1024, "Scene Viewer demo")
-    , m_renderer(GetDevice())
+VoxelRenderer::VoxelRenderer() : m_projection(1.0f)
 {
+	m_mainWindow = std::make_shared<GLWindow>();
+	m_vertexShaderPath = "shaders/vertex.shader";
+	m_fragmentShaderPath = "shaders/fragment.shader";
+	//m_mainWindow->Initialize();
+
+	Initialize();
 }
 
 void VoxelRenderer::Initialize()
 {
-    Application::Initialize();
-
-    // Initialize DearImGUI
-    m_imGui.Initialize(GetMainWindow());
-
-    InitializeCamera();
-    InitializeLights();
-    InitializeMaterial();
-    InitializeModels();
-    InitializeRenderer();
+	m_mainWindow->Initialize();
+	InitializeShader();
+	InitializeCamera();
+	GenerateVoxelList();
 }
 
-void VoxelRenderer::Update()
+void VoxelRenderer::InitializeVoxel(glm::vec3 position)
 {
-    Application::Update();
-
-    // Update camera controller
-    m_cameraController.Update(GetMainWindow(), GetDeltaTime());
-
-    // Add the scene nodes to the renderer
-    RendererSceneVisitor rendererSceneVisitor(m_renderer);
-    m_scene.AcceptVisitor(rendererSceneVisitor);
+	std::shared_ptr<Voxel> obj = std::make_shared<Voxel>();
+	obj->CreateVoxel();
+	obj->SetPosition(position);
+	m_voxelList.push_back(obj);
 }
 
-void VoxelRenderer::Render()
+void VoxelRenderer::InitializeShader()
 {
-    Application::Render();
+	m_shader = std::make_shared<Shader>();
+	m_shader->CreateFromFile(m_vertexShaderPath, m_fragmentShaderPath);
 
-    GetDevice().Clear(true, Color(0.0f, 0.0f, 0.0f, 1.0f), true, 1.0f);
-
-    m_mesh.DrawSubmesh(0);
-
-    // Render the scene
-    m_renderer.Render();
-
-    // Render the debug user interface
-    RenderGUI();
-}
-
-void VoxelRenderer::Cleanup()
-{
-    // Cleanup DearImGUI
-    m_imGui.Cleanup();
-
-    Application::Cleanup();
+	m_uniformModel = m_shader->GetUniformLocation("model");
+	m_viewProjectionUniform = m_shader->GetUniformLocation("ViewProjectionMatrix");
+	m_uniformColor = m_shader->GetUniformLocation("color");
 }
 
 void VoxelRenderer::InitializeCamera()
 {
-    // Create the main camera
-    std::shared_ptr<Camera> camera = std::make_shared<Camera>();
-    camera->SetViewMatrix(glm::vec3(-1, 1, 1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-    camera->SetPerspectiveProjectionMatrix(1.0f, 1.0f, 0.1f, 100.0f);
+	m_camera = new Camera(glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -90.0f, 5.0f, 0.5f);
 
-    // Create a scene node for the camera
-    std::shared_ptr<SceneCamera> sceneCamera = std::make_shared<SceneCamera>("camera", camera);
+	std::cout << glGetString(GL_VERSION) << std::endl << glGetString(GL_VENDOR) << std::endl << glGetString(GL_RENDERER);
 
-    // Add the camera node to the scene
-    m_scene.AddSceneNode(sceneCamera);
+	m_projection = glm::perspective(glm::radians(45.0f), (GLfloat)m_mainWindow->GetBufferWidth() / (GLfloat)m_mainWindow->GetBufferHeight(), 0.1f, 100.0f);
 
-    // Set the camera scene node to be controlled by the camera controller
-    m_cameraController.SetCamera(sceneCamera);
+	//m_shader->UseShader();
+
+	//glUseProgram(0);
 }
 
-void VoxelRenderer::InitializeLights()
+void VoxelRenderer::GenerateVoxelList()
 {
-    // Create a directional light and add it to the scene
-    std::shared_ptr<DirectionalLight> directionalLight = std::make_shared<DirectionalLight>();
-    directionalLight->SetDirection(glm::vec3(-0.3f, -1.0f, -0.3f)); // It will be normalized inside the function
-    directionalLight->SetIntensity(3.0f);
-    m_scene.AddSceneNode(std::make_shared<SceneLight>("directional light", directionalLight));
+	std::vector<float> heights = CreateHeightMap(voxelCountX, voxelCountZ, glm::ivec2(0, 0));
+	std::vector<glm::ivec3> positions;
 
-    // Create a point light and add it to the scene
-    //std::shared_ptr<PointLight> pointLight = std::make_shared<PointLight>();
-    //pointLight->SetPosition(glm::vec3(0, 0, 0));
-    //pointLight->SetDistanceAttenuation(glm::vec2(5.0f, 10.0f));
-    //m_scene.AddSceneNode(std::make_shared<SceneLight>("point light", pointLight));
+	//std::cout << std::endl << heights.size();
+
+	//for (int x = 0; x < voxelCountX; x++)
+	//{
+	//	for (int z = 0; z < voxelCountZ; z++)
+	//	{
+	//		positions.push_back(glm::ivec3(static_cast<GLint>(x), static_cast<GLint>(abs(heights[x * voxelCountZ + z]) * 10.f), static_cast<GLint>(z)));
+	//	}
+	//}
+
+	//for (int i = 0; i < positions.size(); i++)
+	//{
+	//	for (int j = 0; j < positions[i].y; j++)
+	//	{
+	//		InitializeVoxel(glm::ivec3(positions[i].x, j, positions[i].z));
+	//	}
+	//}
+
+	InitializeVoxel(glm::ivec3(0.f, 0.f, 0.f));
 }
 
-void VoxelRenderer::InitializeMaterial()
+std::vector<float> VoxelRenderer::CreateHeightMap(unsigned int width, unsigned int height, glm::ivec2 coords)
 {
-    // Load and build shader
-    std::vector<const char*> vertexShaderPaths;
-    vertexShaderPaths.push_back("shaders/version330.glsl");
-    vertexShaderPaths.push_back("shaders/default.vert");
-    Shader vertexShader = ShaderLoader(Shader::VertexShader).Load(vertexShaderPaths);
+	std::vector<float> pixels(height * width);
+	for (unsigned int j = 0; j < height; ++j)
+	{
+		for (unsigned int i = 0; i < width; ++i)
+		{
+			float x = static_cast<float>(i) / (width - 1) + coords.x;
+			float y = static_cast<float>(j) / (height - 1) + coords.y;
+			pixels[j * width + i] = stb_perlin_fbm_noise3(x, y, 0.0f, 1.9f, 0.5f, 8) * 1.f;
+		}
+	}
 
-    std::vector<const char*> fragmentShaderPaths;
-    fragmentShaderPaths.push_back("shaders/version330.glsl");
-    fragmentShaderPaths.push_back("shaders/utils.glsl");
-    fragmentShaderPaths.push_back("shaders/lambert-ggx.glsl");
-    fragmentShaderPaths.push_back("shaders/lighting.glsl");
-    fragmentShaderPaths.push_back("shaders/default_pbr.frag");
-    Shader fragmentShader = ShaderLoader(Shader::FragmentShader).Load(fragmentShaderPaths);
-
-    std::shared_ptr<ShaderProgram> shaderProgramPtr = std::make_shared<ShaderProgram>();
-    shaderProgramPtr->Build(vertexShader, fragmentShader);
-
-    // Get transform related uniform locations
-    ShaderProgram::Location cameraPositionLocation = shaderProgramPtr->GetUniformLocation("CameraPosition");
-    ShaderProgram::Location worldMatrixLocation = shaderProgramPtr->GetUniformLocation("WorldMatrix");
-    ShaderProgram::Location viewProjMatrixLocation = shaderProgramPtr->GetUniformLocation("ViewProjMatrix");
-
-    // Register shader with renderer
-    m_renderer.RegisterShaderProgram(shaderProgramPtr,
-        [=](const ShaderProgram& shaderProgram, const glm::mat4& worldMatrix, const Camera& camera, bool cameraChanged)
-        {
-            if (cameraChanged)
-            {
-                shaderProgram.SetUniform(cameraPositionLocation, camera.ExtractTranslation());
-                shaderProgram.SetUniform(viewProjMatrixLocation, camera.GetViewProjectionMatrix());
-            }
-            shaderProgram.SetUniform(worldMatrixLocation, worldMatrix);
-        },
-        m_renderer.GetDefaultUpdateLightsFunction(*shaderProgramPtr)
-    );
-
-    // Filter out uniforms that are not material properties
-    ShaderUniformCollection::NameSet filteredUniforms;
-    filteredUniforms.insert("CameraPosition");
-    filteredUniforms.insert("WorldMatrix");
-    filteredUniforms.insert("ViewProjMatrix");
-    filteredUniforms.insert("LightIndirect");
-    filteredUniforms.insert("LightColor");
-    filteredUniforms.insert("LightPosition");
-    filteredUniforms.insert("LightDirection");
-    filteredUniforms.insert("LightAttenuation");
-
-    // Create reference material
-    assert(shaderProgramPtr);
-    m_defaultMaterial = std::make_shared<Material>(shaderProgramPtr, filteredUniforms);
+	return pixels;
 }
 
-void VoxelRenderer::InitializeModels()
+void VoxelRenderer::RunApplication()
 {
-    std::vector<glm::vec3> vertices = {
-        glm::vec3( 0.5f,  0.5f, 0.0f),
-        glm::vec3( 0.5f, -0.5f, 0.0f),
-        glm::vec3(-0.5f, -0.5f, 0.0f),
-        glm::vec3(-0.5f,  0.5f, 0.0f) 
-    };
+	while (!m_mainWindow->GetShouldClose())
+	{
+		ClearWindow(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 
-    unsigned int indices[] = {  // note that we start from 0!
-        0, 1, 3,  // first Triangle
-        1, 2, 3   // second Triangle
-    };
+		GLfloat now = glfwGetTime();
+		m_deltaTime = now - m_lastTime;
+		m_lastTime = now;
 
-    VertexFormat vertexFormat;
-    vertexFormat.AddVertexAttribute<float>(3);
+		glfwPollEvents();
 
-    m_skyboxTexture = TextureCubemapLoader::LoadTextureShared("models/skybox/defaultCubemap.png", TextureObject::FormatRGB, TextureObject::InternalFormatSRGB8);
+		UpdateCamera(m_deltaTime);
 
-    m_skyboxTexture->Bind();
-    float maxLod;
-    m_skyboxTexture->GetParameter(TextureObject::ParameterFloat::MaxLod, maxLod);
-    TextureCubemapObject::Unbind();
+		m_shader->UseShader();
 
-    m_defaultMaterial->SetUniformValue("AmbientColor", glm::vec3(0.25f));
+		for (auto voxel : m_voxelList)
+		{
+			RenderVoxel(voxel);
+		}
 
-    m_defaultMaterial->SetUniformValue("EnvironmentTexture", m_skyboxTexture);
-    m_defaultMaterial->SetUniformValue("EnvironmentMaxLod", maxLod);
-    m_defaultMaterial->SetUniformValue("Color", glm::vec3(1.0f));
+		glUseProgram(0);
 
-    m_mesh.AddSubmesh<glm::vec3, unsigned int, VertexFormat::LayoutIterator>(Drawcall::Primitive::Triangles, vertices, indices,
-            vertexFormat.LayoutBegin(static_cast<int>(vertices.size()), false), vertexFormat.LayoutEnd());
-
-    //// Configure loader
-    //ModelLoader loader(m_defaultMaterial);
-
-    //// Create a new material copy for each submaterial
-    //loader.SetCreateMaterials(true);
-
-    //// Flip vertically textures loaded by the model loader
-    //loader.GetTexture2DLoader().SetFlipVertical(true);
-
-    //// Link vertex properties to attributes
-    //loader.SetMaterialAttribute(VertexAttribute::Semantic::Position, "VertexPosition");
-    //loader.SetMaterialAttribute(VertexAttribute::Semantic::Normal, "VertexNormal");
-    //loader.SetMaterialAttribute(VertexAttribute::Semantic::Tangent, "VertexTangent");
-    //loader.SetMaterialAttribute(VertexAttribute::Semantic::Bitangent, "VertexBitangent");
-    //loader.SetMaterialAttribute(VertexAttribute::Semantic::TexCoord0, "VertexTexCoord");
-
-    //// Link material properties to uniforms
-    //loader.SetMaterialProperty(ModelLoader::MaterialProperty::DiffuseColor, "Color");
-    //loader.SetMaterialProperty(ModelLoader::MaterialProperty::DiffuseTexture, "ColorTexture");
-    //loader.SetMaterialProperty(ModelLoader::MaterialProperty::NormalTexture, "NormalTexture");
-    //loader.SetMaterialProperty(ModelLoader::MaterialProperty::SpecularTexture, "SpecularTexture");
-
-    // Load models
-    //std::shared_ptr<Model> chestModel = loader.LoadShared("models/treasure_chest/treasure_chest.obj");
-    //m_scene.AddSceneNode(std::make_shared<SceneModel>("treasure chest", chestModel));
-
-    //std::shared_ptr<Model> cameraModel = loader.LoadShared("models/camera/camera.obj");
-    //m_scene.AddSceneNode(std::make_shared<SceneModel>("camera model", cameraModel));
-
-    //std::shared_ptr<Model> teaSetModel = loader.LoadShared("models/tea_set/tea_set.obj");
-    //m_scene.AddSceneNode(std::make_shared<SceneModel>("tea set", teaSetModel));
-
-    //std::shared_ptr<Model> clockModel = loader.LoadShared("models/alarm_clock/alarm_clock.obj");
-    //m_scene.AddSceneNode(std::make_shared<SceneModel>("alarm clock", clockModel));
+		m_mainWindow->SwapBuffers();
+	}
 }
 
-void VoxelRenderer::InitializeRenderer()
+void VoxelRenderer::UpdateCamera(GLfloat deltaTime)
 {
-    m_renderer.AddRenderPass(std::make_unique<ForwardRenderPass>());
-    m_renderer.AddRenderPass(std::make_unique<SkyboxRenderPass>(m_skyboxTexture));
+	m_camera->KeyControl(m_mainWindow->GetKeys(), deltaTime);
+	m_camera->MouseControl(m_mainWindow->GetXChange(), m_mainWindow->GetYChange());
 }
 
-void VoxelRenderer::RenderGUI()
+void VoxelRenderer::RenderVoxel(std::shared_ptr<Voxel> voxel)
 {
-    m_imGui.BeginFrame();
+	glm::mat4 model(1.0f);
 
-    // Draw GUI for scene nodes, using the visitor pattern
-    ImGuiSceneVisitor imGuiVisitor(m_imGui, "Scene");
-    m_scene.AcceptVisitor(imGuiVisitor);
+	glm::vec3 pos = voxel->GetPosition();
 
-    // Draw GUI for camera controller
-    m_cameraController.DrawGUI(m_imGui);
+	model = glm::translate(model, glm::vec3(pos.x, pos.y, pos.z));
+	model = glm::scale(model, glm::vec3(1.f, 1.f, 1.f));
+	glUniformMatrix4fv(m_uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+	glUniformMatrix4fv(m_viewProjectionUniform, 1, GL_FALSE, glm::value_ptr(m_projection * m_camera->CalculateViewMatrix()));
+	//glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera->CalculateViewMatrix()));
+	if (voxel->GetPosition().y > 2)
+	{
+		glUniform4f(m_uniformColor, 1.f, 1.f, 1.f, 1.f);
+	}
 
-    m_imGui.EndFrame();
+	else if (voxel->GetPosition().y >= 1)
+	{
+		glUniform4f(m_uniformColor, .7f, .4f, 0.f, 1.f);
+	}
+
+	else
+	{
+		glUniform4f(m_uniformColor, 0.f, 1.f, 0.f, 1.f);
+	}
+
+	voxel->RenderVoxel();
+}
+
+void VoxelRenderer::ClearWindow(glm::vec4 color)
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(color.r, color.g, color.b, color.a);
 }

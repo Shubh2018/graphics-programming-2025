@@ -7,5 +7,5 @@ file(GLOB_RECURSE target_src "*.cpp" )
 file(GLOB_RECURSE shaders "*.vert" "*.frag" "*.geom" "*.glsl" "*.shader")
 source_group("Shaders" FILES ${shaders})
 
-add_executable(${TARGETNAME} ${target_inc} ${target_src} ${shaders})
+add_executable(${TARGETNAME} ${target_inc} ${target_src} ${shaders} "VoxelRenderer.h"  )
 target_link_libraries(${TARGETNAME} ${libraries})
