@@ -7,11 +7,6 @@ Shader::Shader()
 	uniformProjection = 0;
 }
 
-void Shader::CreateFromString(const char* vertexCode, const char* fragmentCode)
-{
-	CompileShader(vertexCode, fragmentCode);
-}
-
 void Shader::CreateFromFile(std::string vertexLocation, std::string fragmentLocation)
 {
 	std::string vertexString = ReadFile(vertexLocation.c_str());
@@ -42,16 +37,6 @@ std::string Shader::ReadFile(const char* fileLocation)
 	}
 
 	return content;
-}
-
-GLuint Shader::GetProjectionLocation()
-{
-	return uniformProjection;
-}
-
-GLuint Shader::GetModelLocation()
-{
-	return uniformModel;
 }
 
 GLuint Shader::GetUniformLocation(std::string uniform)
@@ -112,9 +97,6 @@ void Shader::CompileShader(const char* vertexCode, const char* fragmentCode)
 		std::cout << "Error Validating Program: \n" << eLog;
 		return;
 	}
-
-	uniformModel = glGetUniformLocation(shaderID, "model");
-	uniformProjection = glGetUniformLocation(shaderID, "projection");
 }
 
 void Shader::AddShader(GLuint program, const char* shaderCode, GLenum shaderType)

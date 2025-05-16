@@ -10,51 +10,25 @@ class Voxel
 public:
 	Voxel();
 
-	void CreateVoxel();
+	void CreateVoxel(GLfloat* vertices, GLuint* indices, GLuint numOfVertices, GLuint numOfIndices);
 	void RenderVoxel();
 	void ClearVoxel();
-	void SetPosition(glm::ivec3(pos)) { m_position = glm::ivec3(pos); }
+
+	void SetPosition(glm::ivec3 pos ) { m_position = glm::ivec3(pos); }
+	void SetColor(glm::vec4 color) { m_color = glm::vec4(color); }
+
 	glm::ivec3 GetPosition() { return m_position; }
+	glm::vec4 GetColor() { return m_color; }
 
 	~Voxel();
 
 private:
 	GLuint m_VAO, m_VBO, m_IBO;
-	GLint m_indexCount, m_vertexCount;
+	GLsizei m_indexCount, m_vertexCount;
 
+	glm::vec4 m_color;
 	glm::ivec3 m_position;
 
-	std::vector<GLfloat> m_vertices =
-	{
-	   -.5f,  .5f, -.5f,
-		.5f,  .5f, -.5f,
-	   -.5f, -.5f, -.5f,
-		.5f, -.5f, -.5f,
-
-	   -.5f,  .5f,  .5f,
-		.5f,  .5f,  .5f,
-	   -.5f, -.5f,  .5f,
-		.5f, -.5f,  .5f
-	};
-
-	std::vector<GLint> 	m_indices =
-	{
-		0, 1, 3,
-		0, 3, 2,
-
-		1, 7, 3,
-		1, 5, 7,
-
-		0, 6, 4,
-		0, 2, 6,
-
-		4, 7, 5,
-		4, 6, 7,
-
-		4, 5, 1,
-		4, 1, 0,
-
-		6, 3, 7,
-		6, 2, 3
-	};
+	std::vector<GLfloat> m_vertices;
+	std::vector<GLint> m_indices;
 };

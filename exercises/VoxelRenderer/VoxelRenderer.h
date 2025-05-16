@@ -1,6 +1,5 @@
 #pragma once
 
-#include <iostream>
 #include <string>
 #include <cmath>
 #include <vector>
@@ -22,13 +21,13 @@ class VoxelRenderer
 {
 public:
 	VoxelRenderer();
+	VoxelRenderer(int voxelCountX, int voxelCountZ, glm::vec4 lightColor, glm::vec3 lightPosition, float lacunarity, float grain, float octaves, float modifiers);
 
 private:
-
-	std::shared_ptr<GLWindow> m_mainWindow;
-	std::vector<std::shared_ptr<Voxel>> m_voxelList;
+	std::unique_ptr<GLWindow> m_mainWindow;
+	std::vector<std::shared_ptr<Voxel>> m_meshList;
 	std::shared_ptr<Shader> m_shader;
-	Camera* m_camera;
+	std::unique_ptr<Camera> m_camera;
 
 	GLfloat m_deltaTime = 0.0f;
 	GLfloat m_lastTime = 0.0f;
@@ -36,31 +35,45 @@ private:
 	std::string m_vertexShaderPath;
 	std::string m_fragmentShaderPath;
 
-	const int voxelCountX = 10;
-	const int voxelCountZ = 10;
-
 	GLuint m_uniformModel;
 	GLuint m_viewProjectionUniform;
 	GLuint m_uniformColor;
 
+	GLuint m_lightPositionUniform;
+	GLuint m_lightColorUniform;
+	GLuint m_viewPositionUniform;
+
 	glm::mat4 m_projection;
+
+	int m_voxelCountX = 50;
+	//const int voxelCountY = 10;
+	int m_voxelCountZ = 50;
+
+	GLuint* m_indices = new GLuint[1];
+	GLfloat* m_vertices = new GLfloat[1];
+
+	glm::vec3 m_lightPosition;
+	glm::vec4 m_lightColor;
+
+	float m_lacunarity;
+	float m_gain;
+	float m_octaves;
+	float m_modifier;
+
+private:
+	void Initialize();
+	void GenerateVoxelList();
+	void CreateMesh(GLfloat* vertices, GLuint* indices, glm::vec3 position, glm::vec4 color);
+	void CreateShader();
+	void InitializeWindow();
+
+	void RenderVoxels();
+
+	void InitializeLighting();
+
+	std::vector<float> CreateHeightMap(unsigned int width, unsigned int height, glm::ivec2 coords);
 
 public:
 	void RunApplication();
 
-private:
-	void Initialize();
-
-	void InitializeVoxel(glm::vec3 position);
-	void InitializeShader();
-	void InitializeCamera();
-
-	void GenerateVoxelList();
-
-	std::vector<float> CreateHeightMap(unsigned int width, unsigned int height, glm::ivec2 coords);
-
-	void UpdateCamera(GLfloat deltaTime);
-	void RenderVoxel(std::shared_ptr<Voxel> voxel);
-
-	void ClearWindow(glm::vec4 color);
 };

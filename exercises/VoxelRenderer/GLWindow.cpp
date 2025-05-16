@@ -74,7 +74,7 @@ int GLWindow::Initialize()
 
 	//Enable Depth Test
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+	//glEnable(GL_CULL_FACE);
 	//Setup Viewport Size
 	glViewport(0, 0, bufferWidth, bufferHeight);
 
